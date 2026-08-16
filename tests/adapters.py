@@ -28,7 +28,17 @@ def run_linear(
     Returns:
         Float[Tensor, "... d_out"]: The transformed output of your linear module.
     """
+    from cs336_basics.model import Linear
 
+    linear = Linear(
+        in_features=d_in,
+        out_features=d_out,
+        device=weights.device,
+        dtype=weights.dtype,
+    )
+
+    linear.load_state_dict({"weights": weights})
+    return linear(in_features)
     raise NotImplementedError
 
 
@@ -50,7 +60,17 @@ def run_embedding(
     Returns:
         Float[Tensor, "... d_model"]: Batch of embeddings returned by your Embedding layer.
     """
+    from cs336_basics.model import Embedding
 
+    embedding = Embedding(
+        num_embeddings=vocab_size,
+        embedding_dim=d_model,
+        device=weights.device,
+        dtype=weights.dtype,
+    )
+
+    embedding.load_state_dict({"weights": weights})
+    return embedding(token_ids)
     raise NotImplementedError
 
 
@@ -378,6 +398,18 @@ def run_rmsnorm(
         Float[Tensor,"... d_model"]: Tensor of with the same shape as `in_features` with the output of running
         RMSNorm of the `in_features`.
     """
+
+    from cs336_basics.model import RMSNorm
+
+    resnorm = RMSNorm(
+        d_model = d_model,
+        eps = eps,
+        device = weights.device,
+        dtype = weights.dtype,
+    )
+
+    resnorm.load_state_dict({"weight": weights})
+    return resnorm(in_features)
     raise NotImplementedError
 
 
@@ -559,6 +591,9 @@ def get_tokenizer(
     Returns:
         A BPE tokenizer that uses the provided vocab, merges, and special tokens.
     """
+    from cs336_basics.tokenizer import Tokenizer
+
+    return Tokenizer(vocab, merges, special_tokens=special_tokens)
     raise NotImplementedError
 
 
@@ -589,4 +624,7 @@ def run_train_bpe(
                 representing that <token1> was merged with <token2>.
                 Merges are ordered by order of creation.
     """
+
+    from cs336_basics.bpe import train_bpe
+    return train_bpe(str(input_path), vocab_size, special_tokens)
     raise NotImplementedError
