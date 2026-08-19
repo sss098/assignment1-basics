@@ -10,10 +10,10 @@ layer = Linear(
 
 
 print("Weight:")
-print(layer.weights)
+print(layer.weight)
 
 print("Weight shape:")
-print(layer.weights.shape)
+print(layer.weight.shape)
 
 
 x = torch.tensor([

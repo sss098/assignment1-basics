@@ -37,7 +37,7 @@ def run_linear(
         dtype=weights.dtype,
     )
 
-    linear.load_state_dict({"weights": weights})
+    linear.load_state_dict({"weight": weights})
     return linear(in_features)
     raise NotImplementedError
 
@@ -69,7 +69,7 @@ def run_embedding(
         dtype=weights.dtype,
     )
 
-    embedding.load_state_dict({"weights": weights})
+    embedding.load_state_dict({"weight": weights})
     return embedding(token_ids)
     raise NotImplementedError
 
@@ -103,6 +103,18 @@ def run_swiglu(
     # swiglu.w1.weight.data = w1_weight
     # swiglu.w2.weight.data = w2_weight
     # swiglu.w3.weight.data = w3_weight
+
+    from cs336_basics.model import SwiGLU
+
+    swiglu = SwiGLU(
+        d_model=d_model,
+        d_ff=d_ff,
+        device=w1_weight.device,
+        dtype=w1_weight.dtype,
+    )
+    swiglu.load_state_dict({"w1.weight": w1_weight, "w2.weight": w2_weight, "w3.weight": w3_weight})
+    return swiglu(in_features)
+
     raise NotImplementedError
 
 
@@ -124,6 +136,14 @@ def run_scaled_dot_product_attention(
     Returns:
         Float[Tensor, " ... queries d_v"]: Output of SDPA
     """
+
+    from cs336_basics.model import scaled_dot_product_attention
+    return scaled_dot_product_attention(
+        Q=Q,
+        K=K,
+        V=V,
+        mask=mask,
+    )
     raise NotImplementedError
 
 
@@ -158,6 +178,23 @@ def run_multihead_self_attention(
         Float[Tensor, " ... sequence_length d_model"]: Tensor with the output of running your optimized, batched multi-headed attention
         implementation with the given QKV projection weights and input features.
     """
+    from cs336_basics.model import CausalMultiHeadSelfAttention
+
+    attention = CausalMultiHeadSelfAttention(
+        d_model=d_model,
+        num_heads=num_heads,
+        device=q_proj_weight.device,
+        dtype=q_proj_weight.dtype,
+    )
+    attention.load_state_dict(
+        {
+            "q_proj.weight": q_proj_weight,
+            "k_proj.weight": k_proj_weight,
+            "v_proj.weight": v_proj_weight,
+            "output_proj.weight": o_proj_weight,
+        }
+    )
+    return attention(in_features)
     raise NotImplementedError
 
 
@@ -198,6 +235,27 @@ def run_multihead_self_attention_with_rope(
         Float[Tensor, " ... sequence_length d_model"]: Tensor with the output of running your optimized, batched multi-headed attention
         implementation with the given QKV projection weights and input features.
     """
+
+    from cs336_basics.model import CausalMultiHeadSelfAttention
+
+    attention = CausalMultiHeadSelfAttention(
+        d_model=d_model,
+        num_heads=num_heads,
+        max_seq_len=max_seq_len,
+        theta=theta,
+        device=q_proj_weight.device,
+        dtype=q_proj_weight.dtype,
+    )
+
+    attention.load_state_dict(
+        {
+            "q_proj.weight": q_proj_weight,
+            "k_proj.weight": k_proj_weight,
+            "v_proj.weight": v_proj_weight,
+            "output_proj.weight": o_proj_weight,
+        }
+    )
+    return attention(in_features, token_positions=token_positions)
     raise NotImplementedError
 
 
@@ -220,6 +278,16 @@ def run_rope(
     Returns:
         Float[Tensor, " ... sequence_length d_k"]: Tensor with RoPEd input.
     """
+
+    from cs336_basics.model import RotaryPositionalEmbedding
+
+    rope = RotaryPositionalEmbedding(
+        theta=theta,
+        d_k=d_k,
+        max_seq_len=max_seq_len,
+        device=in_query_or_key.device,
+    )
+    return rope(in_query_or_key, token_positions)
     raise NotImplementedError
 
 
@@ -293,6 +361,33 @@ def run_transformer_block(
         Float[Tensor, "batch sequence_length d_model"] Tensor with the output of
         running the Transformer block on the input features while using RoPE.
     """
+
+    from cs336_basics.model import TransformerBlock
+
+    transformer = TransformerBlock(
+        d_model=d_model,
+        num_heads=num_heads,
+        d_ff=d_ff,
+        max_seq_len=max_seq_len,
+        theta=theta,
+        device=weights["attn.q_proj.weight"].device,
+        dtype=weights["attn.q_proj.weight"].dtype,
+    )
+
+    transformer.load_state_dict(
+        {
+            "attn.q_proj.weight": weights["attn.q_proj.weight"],
+            "attn.k_proj.weight": weights["attn.k_proj.weight"],
+            "attn.v_proj.weight": weights["attn.v_proj.weight"],
+            "attn.output_proj.weight": weights["attn.output_proj.weight"],
+            "ffn.w1.weight": weights["ffn.w1.weight"],
+            "ffn.w2.weight": weights["ffn.w2.weight"],
+            "ffn.w3.weight": weights["ffn.w3.weight"],
+            "ln2.weight": weights["ln2.weight"],
+            "ln1.weight": weights["ln1.weight"],
+        }
+    )
+    return transformer(in_features)
     raise NotImplementedError
 
 
@@ -375,6 +470,24 @@ def run_transformer_lm(
         Float[Tensor, "batch_size sequence_length vocab_size"]: Tensor with the predicted unnormalized
         next-word distribution for each token.
     """
+
+    from cs336_basics.model import TransformerLM
+
+    model = TransformerLM(
+        vocab_size=vocab_size,
+        context_length=context_length,
+        d_model=d_model,
+        num_layers=num_layers,
+        num_heads=num_heads,
+        d_ff=d_ff,
+        rope_theta=rope_theta,
+        device=in_indices.device,
+        dtype=weights["token_embeddings.weight"].dtype,
+    )
+
+    model.load_state_dict(weights)
+    return model(in_indices)
+
     raise NotImplementedError
 
 
@@ -424,6 +537,10 @@ def run_silu(in_features: Float[Tensor, " ..."]) -> Float[Tensor, " ..."]:
         Float[Tensor,"..."]: of with the same shape as `in_features` with the output of applying
         SiLU to each element.
     """
+
+    from cs336_basics.model import silu
+
+    return silu(in_features)
     raise NotImplementedError
 
 
@@ -463,6 +580,11 @@ def run_softmax(in_features: Float[Tensor, " ..."], dim: int) -> Float[Tensor, "
         Float[Tensor, "..."]: Tensor of with the same shape as `in_features` with the output of
         softmax normalizing the specified `dim`.
     """
+    from cs336_basics.model import softmax
+    return softmax(
+        in_features,
+        dim=dim,
+    )
     raise NotImplementedError
 
 
